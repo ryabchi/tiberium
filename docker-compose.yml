@@ -1,0 +1,80 @@
+version: '3.3'
+
+services:
+  app:
+    build: &build
+      context: .
+      dockerfile: docker/app/Dockerfile
+    environment:
+      DATABASE_URL: &db_default ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_URL: ${ADMIN_URL}
+      DEBUG: ${DEBUG}
+      DRF_RECAPTCHA: ${DRF_RECAPTCHA}
+      DRF_RECAPTCHA_SECRET_KEY: ${DRF_RECAPTCHA_SECRET_KEY}
+    command: gunicorn tiberium.wsgi:application --config='/gunicorn.py' --reload
+    volumes:
+      - .:/home/docker/code/app/
+    ports:
+      - ${PORT}:80
+    depends_on:
+      - postgres
+
+  postgres:
+    image: 'postgres:10.6'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  migrate:
+    build: *build
+    environment:
+      DATABASE_URL: *db_default
+      SECRET_KEY: ${SECRET_KEY}
+    command: python manage.py migrate
+    depends_on:
+      - postgres
+
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=pass
+    logging:
+      driver: none
+
+  worker:
+    build: *build
+    environment:
+      DATABASE_URL: *db_default
+      SECRET_KEY: ${SECRET_KEY}
+    command: celery worker --app=tiberium --loglevel=INFO --task-events --pidfile=/opt/workerceleryd.pid
+    volumes:
+      - .:/home/docker/code/app/
+    depends_on:
+      - rabbitmq
+      - postgres
+
+  beat:
+    build: *build
+    environment:
+      DATABASE_URL: *db_default
+      SECRET_KEY: ${SECRET_KEY}
+    command: celery beat --app=tiberium --loglevel=INFO --pidfile=/opt/beatceleryd.pid
+    volumes:
+      - .:/home/docker/code/app/
+    depends_on:
+      - rabbitmq
+      - redis
+
+  flower:
+    build: *build
+    environment:
+      DATABASE_URL: *db_default
+      SECRET_KEY: ${SECRET_KEY}
+    command: celery flower --app tiberium --port=5500 --pidfile=/opt/flowerceleryd.pid
+    depends_on:
+      - worker
+
+  redis:
+    image: "redis:5-alpine"

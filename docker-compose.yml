@@ -16,7 +16,7 @@ services:
     volumes:
       - .:/home/docker/code/app/
     ports:
-      - ${PORT}:80
+      - 8000:80
     depends_on:
       - postgres
       - migrate

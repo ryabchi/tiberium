@@ -12,7 +12,7 @@ WORKDIR /home/docker/code/app
 RUN apk update && \
  apk add --virtual .build-deps python3-dev gcc musl-dev linux-headers zlib-dev jpeg-dev build-base py-pip && \
  apk add jpeg postgresql-dev make && \
- pip install -U poetry --no-cache-dir && \
+ pip install -U poetry==0.12.10 --no-cache-dir && \
  poetry config settings.virtualenvs.create false && poetry install && \
  apk --purge del .build-deps
 

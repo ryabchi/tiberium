@@ -19,6 +19,7 @@ services:
       - ${PORT}:80
     depends_on:
       - postgres
+      - migrate
 
   postgres:
     image: 'postgres:10.6'
@@ -54,6 +55,7 @@ services:
     depends_on:
       - rabbitmq
       - postgres
+      - migrate
 
   beat:
     build: *build
